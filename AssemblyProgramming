@@ -1,0 +1,399 @@
+; Hemang Nehra hnehra2
+; This program is a calculator that can add multiply subtract divide 
+; and raise a number to some power in a postfix expression. In order 
+; to do so we use stacks to implement
+; this calculator. When an operand is entered it is pushed to stack 
+; and when an operator is entered two values are popped and the result
+; is pushed back to the stack.
+;
+;
+;
+; Register Table:
+; R0: input value is stored here initially.
+; R1: working copy of R0 to determine whether the input is a number
+;     or operator.
+; R2: it is used as a temporary register to load addresses into it.
+; R3: it is used to hold the value of the first operand and 
+;     stores the value that needs to be printed
+; R4: it is used to store the value of the second operand
+; R5: Used to check for underflow of stack when popping values
+;     and stores the final result of the postfix expression
+; R6: The original input that does not change while checking for 
+;      operators.
+; 
+;
+;
+.ORIG x3000
+	
+;your code goes here
+
+TAKEIN
+ 			
+	GETC								; input a character
+	OUT 								; print the character on screen
+	AND R6,R6,#0						; clearing R6
+	ADD R6,R6,R0						; R6 is a working copy of R0
+	BRnzp EVALUATE 						; Branch to check the character (operator or operand) 
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;R3- value to print in hexadecimal
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;R0 - character input from keyboard
+;R6 - current numerical output
+;
+;
+EVALUATE
+
+;your code goes here
+	AND R1,R1,#0						; clearing R1
+	ADD R1,R1,R0						; R1 is working copy of input
+	LD R2,ADDRS_EQ 						; R2 holds '=' ASCII value 
+	NOT R2,R2							;
+	ADD R2,R2,#1						;
+	ADD R2,R1,R2						; Check if the input character is '='
+	BRz STACKOUTCHCK					; If yes, check if stack holds only one value
+	LD R2,ADDRS_SP 						; R2 holds ' ' ASCII value 
+	NOT R2,R2							;
+	ADD R2,R2,#1						;
+	ADD R2,R1,R2						; Check if the input character is ' '
+	BRz TAKEIN							; if space, read next input
+	LD R2,ADDRS_9 						; R2 holds '9' ASCII value 	
+	NOT R1,R1							;
+	ADD R1,R1,#1						;
+	ADD R2,R2,R1						; Check if character is a digit
+	BRn CHCKOPERAND						; checks for a character less than 9, if not check for operand
+	AND R1,R1,#0 						; clearing R0
+	ADD R1,R1,R0 						; R1 is working copy of input
+	LD R2,ADDRS_0 						; R2 holds '0' ASCII value 	
+	NOT R2,R2							;
+	ADD R2,R2,#1						;
+	ADD R1,R2,R1						;
+	BRn	CHCKOPERAND						; checks for a character greater than 0, if not check for operand
+										; if still continues, it is a number that is to be pushed in stack
+	AND R1,R1,#0						; clearing R0
+	ADD R1,R0,R1						;
+	LD R2,ADDRS_MIN15 					; R2 holds '0' ASCII value
+	NOT R2,R2
+	ADD R2,R2,#1						;
+	ADD R0,R0,R2						; R0 now holds the ASCII value of the number to be pushed 
+	JSR PUSH 							; push the operand to stack
+	BRnzp TAKEIN						; Take in next character
+CHCKOPERAND
+	AND R3,R3,#0						; Clear R3
+	AND R4,R4,#0						; Clear R4
+	JSR POP 							; First operand popped
+	ADD R4,R4,R0						; R4 holds value of first Operand
+	JSR POP								; Second operand popped
+	ADD R5,R5,#-1						;
+    BRz INVALID							; checking for underflow
+	ADD R3,R3,R0						; R3 holds value of Second Operand
+	AND R2,R2,#0						;
+	LD R2,ADDRS_PLUS					; R2 holds '+' ASCII value 
+	NOT R2,R2							;
+	ADD R2,R2,#1						;
+	ADD R2,R6,R2						;
+	BRnp LMIN							; If character is not '+', check for '-'
+	JSR PLUS 							; Calls sub routine PLUS to add
+	JSR PUSH 							; else Push the added value
+	BRnzp TAKEIN 						; Take in next character
+LMIN
+	LD R2,ADDRS_MIN						; R2 holds '-' ASCII value						
+	NOT R2,R2							;	
+	ADD R2,R2,#1						;
+	ADD R2,R6,R2						;
+	BRnp LMULT							; If character is not '-', check for '*'
+	JSR MIN								; Calls sub routine MIN to subtract
+	JSR PUSH 							; else Push the subtracted value
+	BRnzp TAKEIN 						; Take in next character
+LMULT
+	LD R2,ADDRS_MULT					; R2 holds '*' ASCII value
+	NOT R2,R2							; 
+	ADD R2,R2,#1						;
+	ADD R2,R6,R2						;
+	BRnp LDIV							; If character is not '*', check for '/'
+	JSR MUL								; Calls sub routine MULT to multiply
+	JSR PUSH 							; else Push the multiplied value	
+	BRnzp TAKEIN 						; Take in next character
+LDIV
+	LD R2,ADDRS_DIV						; R2 holds '/' ASCII value
+	NOT R2,R2							; 
+	ADD R2,R2,#1						;
+	ADD R2,R6,R2						;
+	BRnp LEXPO							; If character is not '/', check for '^'
+	JSR DIV								; Calls sub routine DIV to divide
+	JSR PUSH 							; else Push the divided value	
+	BRnzp TAKEIN 						; Take in next character
+LEXPO
+	LD R2,ADDRS_EXP						; R2 holds '^' ASCII value
+	NOT R2,R2							;
+	ADD R2,R2,#1						;
+	ADD R2,R6,R2						;
+	BRnp INVALID						; If character is not '^', the character is INVALID 
+	JSR EXP								; Calls sub routine  to raise to power
+	JSR PUSH						    ; else Push the resulting value	
+	BRnzp TAKEIN						; Take in next character
+INVALID
+	AND R0,R0,#0	                    ; Clearing R0
+	ADD R0,R3,R0						; 
+	JSR PUSH							; push the popped values that are not required now
+	AND R0,R0,#0						; clearing R0
+	ADD R0,R4,R0						;
+	JSR PUSH							; push the popped values that are not required now
+	LEA R0,INVLDSTATE					; Output the string "Invalid Expression"
+	PUTS
+	BRnzp DONE							; Branch to Halt
+	
+
+
+PLUS	
+	ADD R0,R3,R4						; Add R3 and R4
+	RET 								; JMP R7
+	
+	
+	
+MIN	 
+;your code goes here
+	ST R3, MIN_SaveR3					; save R3
+	ST R4, MIN_SaveR4					; save R4
+	NOT R4,R4							;
+	ADD R4,R4,#1						;
+	AND R0,R0,#0						;
+	ADD R0,R3,R4						; R0=R3-R4
+	LD R3, MIN_SaveR3					; 
+	LD R4, MIN_SaveR4					; Load the previous values of R3 and R4
+	RET                                 ; JMP R7
+	MIN_SaveR3	.BLKW #1				;
+	MIN_SaveR4	.BLKW #1				;
+
+
+MUL	
+;your code goes here R3*R4
+	ST R3, MULT_SaveR3					; save R3
+	ST R4, MULT_SaveR4					; save R4
+    AND R0,R0,#0						; clearing R0
+LOOP_MUL
+    ADD R4,R4,#0						; Branch till R4 = 0
+	BRp MULLOOP							;
+    LD R3, MULT_SaveR3      			;
+	LD R4, MULT_SaveR4                  ; Load the previous values of R3 and R4
+    RET									; JMP R7
+MULLOOP
+    ADD R0,R0,R3						; 
+	ADD R4,R4,#-1						; 	
+	BRnzp LOOP_MUL						; unconditional loop to the start
+	MULT_SaveR3	.BLKW #1				;
+	MULT_SaveR4	.BLKW #1				;
+	
+	
+DIV	
+;your code goes here 
+	ST R3, DIV_SaveR3					; save R3
+	ST R4, DIV_SaveR4					; save R4
+	AND R2,R2,#0						;
+	NOT R4,R4							;
+	ADD R4,R4,#1						;
+DIVLOOP
+	ADD R3,R3,R4						;	
+	ADD R2,R2,#1						;
+	ADD R3,R3,#0						;
+	BRzp DIVLOOP 						;
+	ADD R2,R2,#-1						; record the quotient
+	AND R0,R0,#0						;
+	ADD R0,R2,R0						; store the quotient
+	LD R3, DIV_SaveR3					; Load the previous values of R3 and R4
+	LD R4, DIV_SaveR4					;
+	RET									; JMP R7
+	DIV_SaveR3	.BLKW #1				;
+	DIV_SaveR4	.BLKW #1				;
+	
+	
+	
+EXP
+	ST R3, EXP_SaveR3	     			; save R3
+	ST R4, EXP_SaveR4					; save R4
+	ADD R4,R4,#0						;
+	BRz BADBOY							; Branch to BADBOY to store the value
+	AND R2,R2,#0						; clearing R2
+	ADD R4,R4,#-1						; 
+	ADD R2,R2,R3						; R2 = R2 + R3
+	AND R0,R0,#0						;
+	ADD R0,R0,R3						; R0 = R0 + R3
+EXPL2
+	AND R5,R5,#0						;
+	ADD R5,R5,R0						; R5 holds the value R0
+	ADD R5,R5,#-1						;
+EXPL1
+	ADD R2,R2,R3						;
+	ADD	R5,R5,#-1						;
+	BRp EXPL1 							; Performing repeated addition to the (R4) number of times
+	AND R3,R3,#0						;
+	ADD R3,R2,R3						;
+	ADD R4,R4,#-1						;
+	BRp EXPL2 							; If R4 is positive, loop to EXPL2
+	AND R0,R0,#0						;
+	ADD R0,R2,R0						;
+	LD R3, EXP_SaveR3					;
+	LD R4, EXP_SaveR4					; Load the previous values of R3 and R4
+	BRnzp SUPERCONTINUE					; Unconditional jump to exit EXP subroutine
+BADBOY
+	AND R0,R0,#0						;
+	ADD R0,R0,#1						;
+SUPERCONTINUE
+	RET   								; JMP R7
+	EXP_SaveR3	.BLKW #1				;
+	EXP_SaveR4	.BLKW #1				;
+	
+;IN:R0, OUT:R5 (0-success, 1-fail/overflow)
+;R3: STACK_END R4: STACK_TOP
+;
+PUSH	
+	ST R3, PUSH_SaveR3					;save R3
+	ST R4, PUSH_SaveR4					;save R4
+	AND R5, R5, #0						;
+	LD R3, STACK_END					;
+	LD R4, STACk_TOP					;
+	ADD R3, R3, #-1						;
+	NOT R3, R3							;
+	ADD R3, R3, #1						;
+	ADD R3, R3, R4						;
+	BRz OVERFLOW						;stack is full
+	STR R0, R4, #0						;no overflow, store value in the stack
+	ADD R4, R4, #-1						;move top of the stack
+	ST R4, STACK_TOP					;store top of stack pointer
+	BRnzp DONE_PUSH						;
+OVERFLOW
+	ADD R5, R5, #1						;
+DONE_PUSH
+	LD R3, PUSH_SaveR3					;
+	LD R4, PUSH_SaveR4					;
+	RET
+
+
+PUSH_SaveR3	.BLKW #1					;
+PUSH_SaveR4	.BLKW #1					;
+
+
+;OUT: R0, OUT R5 (0-success, 1-fail/underflow)
+;R3 STACK_START R4 STACK_TOP
+;
+POP	
+	ST R3, POP_SaveR3					;save R3
+	ST R4, POP_SaveR4					;save R3
+	AND R5, R5, #0						;clear R5
+	LD R3, STACK_START					;
+	LD R4, STACK_TOP					;
+	NOT R3, R3							;
+	ADD R3, R3, #1						;
+	ADD R3, R3, R4						;
+	BRz UNDERFLOW						;
+	ADD R4, R4, #1						;
+	LDR R0, R4, #0						;
+	ST R4, STACK_TOP					;
+	BRnzp DONE_POP						;
+UNDERFLOW
+	ADD R5, R5, #1						;
+DONE_POP
+	LD R3, POP_SaveR3					;
+	LD R4, POP_SaveR4					;
+	RET
+
+POP_SaveR3	.BLKW #1					;
+POP_SaveR4	.BLKW #1					;
+PLUS_SaveR7	.BLKW #1					;
+
+STACKOUTCHCK                            ; Checking if the stack has only one value
+	LD R1,STACK_START					; Loading STACK START address to R1
+	LD R2,STACK_TOP						; Loading STACK TOP address to R2
+	NOT R1,R1							;
+	ADD R1,R1,#1 						; negating STACK START
+	ADD R1,R1,R2						; STACK TOP - STACK START
+	ADD R1,R1,#1						;
+	BRnp INVALID						; If stack does not contain one value, INVALID EXPRESSION
+	AND R3,R3,#0						;
+	AND R5,R5,#0						;
+	JSR POP								; Popping the final result
+	ADD R5,R5,R0						; storing final result in R5
+	ADD R3,R3,R0						; 
+	
+	JSR PRINT_HEX 						; Printing the output on the screen
+DONE
+	HALT								; Halting the program
+	
+STACK_END	.FILL x3FF0					;
+ADDRS_EQ	.FILL x003D					; X003D is hexadecimal for '='
+ADDRS_SP	.FILL x0020					; x0020 is hexadecimal for ' '
+ADDRS_9		.FILL x0039					; x0039 is hexadecimal for '9'
+ADDRS_0		.FILL x0030					; x0030 is hexadecimal for '0'
+ADDRS_PLUS	.FILL x002B					;
+ADDRS_MIN15	.FILL x0030					;
+ADDRS_MIN	.FILL x002D 				;
+ADDRS_A     .FILL x0041				    ; x0041 = Hexadecimal for 'A'
+ADDRS_ZRO   .FILL x0030 				; x0030 = Hexadecimal for '0'
+ADDRS_MULT	.FILL x002A					;
+INVLDSTATE	.STRINGZ "Invalid Expression" ;
+ADDRS_DIV	.FILL x002F					;
+ADDRS_EXP	.FILL x005E					;
+STACK_START	.FILL x4000					;
+STACK_TOP	.FILL x4000					;
+
+PRINT_HEX
+	ST R7, PRINT_SaveR7					; save R7
+	AND R0,R0,#0
+	LD R0, VALUE_X                      ; R0 stores the hexadecimal value 'x'
+    OUT
+	AND R1,R1,#0       					; R1 is digit counter
+	ADD R1,R1,#4       					; R1 = 4, as we want to print 4 letters 
+
+LOOP_OVER 
+	ADD R1,R1,#0       					; Checking whether we have printed 4 digits or not
+	BRnz DONERET       					; If yes, got to DONE_LETTER, else continue
+	AND R0,R0,#0       					; R0 will hold the Hexadecimal value
+	AND R2,R2,#0       					; R2 is bit counter
+	ADD R2,R2,#4       					; 4 bits will give the hexadecimal value for 1 digit
+
+LOOP_BIT 
+	ADD R2,R2,#0      					; Checking whether we have printed 4 bits or not
+	BRnz BIT_DONE     				 	; If yes, print out the letter and go to next digit
+	ADD R0,R0,R0      					; R0 = R0 * 2
+	ADD R3,R3,#0						;	
+	BRn MSB_ONE       				 	; If R3 < 0, Branch to MSB_ONE
+	ADD R0,R0,#0					
+	BRnzp SHFT_LF      					; Unconditional Branch to SHFT_LF
+
+MSB_ONE 
+	ADD R0,R0,#1
+	SHFT_LF 
+	ADD R3,R3,R3       					; Shift R3 Left
+	ADD R2,R2,#-1      					; Decrement Bit Counter by 1
+	BRnzp LOOP_BIT     					; Unconditional Branch to start of first bit
+
+BIT_DONE
+	ADD R6,R0,#0       					; R6 also holds the digit
+	ADD R6,R6,#-9      					; Checking whether R6 holds a number or letter
+	BRnz DIGIT_OUT     					; If true, number is Positive
+	LD R6,ADDRS_A      					; R6 = 'A'
+	ADD R6,R6,#-10
+	ADD R0,R0,R6       					; Giving the final value to R0
+	BRnzp RDY_TRAP    					; Unconditional Branch to display the digit
+
+DIGIT_OUT
+	LD R6,ADDRS_ZRO    					; R6 = '0'
+	ADD R0,R0,R6       					; R0 now holds '0' to '9'
+
+RDY_TRAP
+	ADD R0,R0,#0       					; Displaying the value of the bit on screen
+	OUT
+	ADD R1,R1,#-1      					; Decrementing Digit Counter by 1
+	BRnzp LOOP_OVER    					; Going to the start of the loop	
+
+DONERET
+	LD R7, PRINT_SaveR7					;
+	RET									; JMP R7
+
+PRINT_SaveR7 .BLKW #1					;
+VALUE_X .FILL x0078                     ;
+
+.END
