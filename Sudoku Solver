@@ -1,0 +1,160 @@
+#include "sudoku.h"
+//This program can be used to solve a sudoku puzzle
+//using the principle of backtracking. Here, 5 functions have been used
+//Out ofthese, three of them are used to check for the validity
+//of a number in the given (i,j) position in the 9x9 sudoku puzzle
+//using the is_valid function. Finally, the 5th function is the function
+//which uses backtracking.
+//-------------------------------------------------------------------------------------------------
+// Start here to work on your MP7
+//-------------------------------------------------------------------------------------------------
+
+// You are free to declare any private functions if needed.
+
+// Function: is_val_in_row
+// Return true if "val" already existed in ith row of array sudoku.
+int is_val_in_row(const int val, const int i, const int sudoku[9][9])
+  {
+    assert(i>=0 && i<9);
+    int p=0,d;
+    for(d=0;d<9;d++)                                      //counter for traversing through row
+      {
+          if(sudoku[i][d]==val)                           //checking if value in the cell (i,d) is equal to val
+            p=1;                                          // if yes, then p is 1
+      }
+    return p;                                             //returning p to function
+  }
+
+// Function: is_val_in_col
+// Return true if "val" already existed in jth column of array sudoku.
+int is_val_in_col(const int val, const int j, const int sudoku[9][9])
+  {
+    assert(j>=0 && j<9);
+    int p=0,d;
+    for(d=0;d<9;d++)                                        //counter for traversing through column
+      {
+        if(sudoku[d][j]==val)                               //checking if value in the cell (d,j) is eula to val
+        p=1;                                                //if yes, then p is 1
+      }
+    return p;                                               //return p to function
+  }
+
+// Function: is_val_in_3x3_zone
+// Return true if val already existed in the 3x3 zone corresponding to (i, j)
+int is_val_in_3x3_zone(const int val, const int i, const int j, const int sudoku[9][9]) {
+
+  assert(i>=0 && i<9);                                      //this function checks if the number exists in its corresponding 3x3 zone depending on (i,j)
+  int p=0;
+                                                           //9 boxes. value of i decides the row box. value of j decides the column box
+  int temp1,temp2,c,d;
+  if(i%3!=0)                                                //if the i%3 in (i,j) is not zero then...
+    {
+      for(temp1=0;temp1<=2;temp1++)                         //for loop to determine the starting index for the 3x3 zone row counter
+        {
+          if((i-temp1)%3==0)
+            {
+              c=i-temp1;                                    //variable c is the starting row index
+              break;
+            }
+        }
+    }
+  else if(i%3==0)                                           //in case the i%3 in (i,j) is zero, then starting index for row will be i itself
+    c=i;
+  if(j%3!=0)                                                //same process for the column as for the rows
+    {
+      for(temp1=0;temp1<=2;temp1++)
+        {
+          if((j-temp1)%3==0)
+              {
+                d=j-temp1;                                //variable d is the starting column index
+                break;
+              }
+        }
+    }
+  else if(j%3==0)
+    d=j;
+  for(temp1=c;temp1<=c+2;temp1++)                           //for loops to check if the number val exists in the corresponding 3x3 zone
+      for(temp2=d;temp2<=d+2;temp2++)
+          if(sudoku[temp1][temp2]==val)
+            p=1;
+  return p;
+}
+
+// Function: is_val_valid
+// Return true if the val is can be filled in the given entry.
+int is_val_valid(const int val, const int i, const int j, const int sudoku[9][9])
+  {
+    assert(i>=0 && i<9 && j>=0 && j<9);                     //this function checks if the number val can be used in the given (i,j) cell
+    int p=0,a,b,c;
+    a=is_val_in_row(val,i,sudoku);
+    b=is_val_in_col(val,j,sudoku);
+    c=is_val_in_3x3_zone(val,i,j,sudoku);
+    if(a==0 && b==0 && c==0)                                //the number is valid only when the first three functions return 0
+      p=1;
+    return p;
+  }
+
+// Procedure: solve_sudoku
+// Solve the given sudoku instance.
+int solve_sudoku(int sudoku[9][9])
+  {                                                         //this function solves the given instance of sudoku using recursion and backtracking
+    int r,c,p,a,b,num,t,flag=1;
+    for(r=0;r<9;r++)                                        //traversing hrough the 2d array of the puzzle
+      {
+        for(c=0;c<9;c++)
+          {
+            if(sudoku[r][c]==0)                             //if the cell contains 0 (it is empty), then...
+              {
+                  a=r;                                      // a stores the row index of the empty cell
+                  b=c;                                      //b stores the column index of the empty cell
+                  flag=0;                                   // flag becomes 1 when we encounter an empty cell
+                  break;
+              }
+          }
+        if(flag==0)
+          break;
+      }
+    if (flag==1)                                          //in case all the cells are filled, sudoku is solved and we return to main()
+      return 1;
+   else                                                   //else we try to fit in numbers and using backtracking if the number in that cell is valid
+      {
+        for(num=1;num<=9;num++)                           //loop for the number to be entered in empty cell
+          {
+            if(is_val_valid(num,a,b,sudoku)==1)            //checking if num is valid in the empty cell with index (a,b)
+              {
+                sudoku[a][b]=num;                         //if yes, sudoku[a][b]= num
+                if(solve_sudoku(sudoku)==1)               //recursive backtracking
+                  return 1;                               //if yes, return true to the function
+              }
+              sudoku[a][b]=0;                             //if it fails, make the cell empty
+          }
+      }
+    return 0;
+
+
+  }
+
+// Procedure: print_sudoku
+void print_sudoku(int sudoku[9][9])
+{
+  int i, j;
+  for(i=0; i<9; i++) {
+    for(j=0; j<9; j++) {
+      printf("%2d", sudoku[i][j]);
+    }
+    printf("\n");
+  }
+}
+
+// Procedure: parse_sudoku
+void parse_sudoku(const char fpath[], int sudoku[9][9]) {
+  FILE *reader = fopen(fpath, "r");
+  assert(reader != NULL);
+  int i, j;
+  for(i=0; i<9; i++) {
+    for(j=0; j<9; j++) {
+      fscanf(reader, "%d", &sudoku[i][j]);
+    }
+  }
+  fclose(reader);
+}
